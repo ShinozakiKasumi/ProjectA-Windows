@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+  schedule:
+    - cron: "*/15 * * * *"
   workflow_dispatch:
     inputs:
       source_sha:
@@ -38,13 +40,52 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Resolve ProjectA source commit
+        id: source
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.PROJECTA_SOURCE_TOKEN }}
+          INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          if [ -n "$INPUT_SOURCE_SHA" ]; then
+            SOURCE_SHA="$INPUT_SOURCE_SHA"
+          elif [ -n "$GH_TOKEN" ]; then
+            SOURCE_SHA="$(gh api repos/ShinozakiKasumi/ProjectA/commits/main --jq .sha)"
+          elif [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
+            echo "::error::PROJECTA_SOURCE_TOKEN is required for scheduled ProjectA sync builds."
+            exit 1
+          else
+            SOURCE_SHA="$GITHUB_SHA"
+          fi
+
+          echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "Resolved ProjectA source commit: $SOURCE_SHA"
+
+      - name: Check existing prerelease
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.source.outputs.source_sha }}
+        run: |
+          RELEASE_TAG="prerelease-${SOURCE_SHA}"
+          if [ "$GITHUB_EVENT_NAME" = "schedule" ] && gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+            echo "Prerelease $RELEASE_TAG already exists; skipping scheduled build."
+          else
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install dependencies
+        if: steps.release.outputs.should_build == 'true'
         run: npm ci
 
       - name: Build Windows bundle
+        if: steps.release.outputs.should_build == 'true'
         run: npm run build
 
       - name: Collect installers
+        if: steps.release.outputs.should_build == 'true'
         shell: bash
         run: |
           mkdir -p dist
@@ -56,10 +97,11 @@ jobs:
           ls -lh dist
 
       - name: Publish prerelease
+        if: steps.release.outputs.should_build == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          SOURCE_SHA: ${{ inputs.source_sha || github.sha }}
+          SOURCE_SHA: ${{ steps.source.outputs.source_sha }}
         run: |
           RELEASE_TAG="prerelease-${SOURCE_SHA}"
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
