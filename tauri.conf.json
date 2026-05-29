@@ -1,11 +1,11 @@
 {
-  "$schema": "../web/node_modules/@tauri-apps/cli/config.schema.json",
+  "$schema": "node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Akari",
   "version": "0.1.0",
   "identifier": "com.akari.app",
   "build": {
-    "frontendDist": "../web/out",
-    "devUrl": "https://akari.yourdomain.com",
+    "frontendDist": "web/out",
+    "devUrl": "https://next.rikka.moe",
     "beforeDevCommand": "",
     "beforeBuildCommand": ""
   },

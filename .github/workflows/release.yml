@@ -1,0 +1,69 @@
+name: Release Windows Installer
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: ProjectA source commit that requested this build.
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-prerelease-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Windows bundle
+        run: npm run build
+
+      - name: Collect installers
+        shell: bash
+        run: |
+          mkdir -p dist
+          find target/release/bundle -type f \( -name '*.exe' -o -name '*.msi' \) -print -exec cp {} dist/ \;
+          if [ -z "$(find dist -type f -print -quit)" ]; then
+            echo "::error::No Windows installer artifact was produced."
+            exit 1
+          fi
+          ls -lh dist
+
+      - name: Publish prerelease
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ inputs.source_sha || github.sha }}
+        run: |
+          RELEASE_TAG="prerelease-${SOURCE_SHA}"
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release delete "$RELEASE_TAG" --yes --cleanup-tag
+          fi
+
+          gh release create "$RELEASE_TAG" dist/* \
+            --prerelease \
+            --title "Windows prerelease ${SOURCE_SHA::12}" \
+            --notes "Automated Windows installer prerelease for ProjectA source commit ${SOURCE_SHA}. Client shell commit: ${GITHUB_SHA}."
