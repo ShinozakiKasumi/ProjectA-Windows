@@ -1,0 +1,40 @@
+{
+  "$schema": "../web/node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Akari",
+  "version": "0.1.0",
+  "identifier": "com.akari.app",
+  "build": {
+    "frontendDist": "../web/out",
+    "devUrl": "https://akari.yourdomain.com",
+    "beforeDevCommand": "",
+    "beforeBuildCommand": ""
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Akari",
+        "width": 1280,
+        "height": 800,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "android": {
+      "debugApplicationIdSuffix": ".debug"
+    }
+  }
+}
