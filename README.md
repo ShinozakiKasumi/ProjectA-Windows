@@ -1,4 +1,4 @@
-<p align="center"><img src="https://raw.githubusercontent.com/ShinozakiKasumi/ProjectA/main/docs/brand/akari-logo.svg" width="120" alt="Akari logo" /></p>
+<p align="center"><img src="./akari-logo.svg" width="120" alt="Akari logo" /></p>
 
 <h1 align="center">Project Akari — Desktop Client</h1>
 <p align="center"><em>Illuminating the Path of Learning</em></p>
