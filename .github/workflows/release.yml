@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
   schedule:
     - cron: "*/15 * * * *"
   workflow_dispatch:
@@ -141,21 +143,35 @@ jobs:
       - name: List collected artifacts
         run: find dist -type f | sort
 
-      - name: Publish prerelease
+      - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
           SOURCE_SHA: ${{ needs.resolve.outputs.source_sha }}
+          IS_TAG: ${{ startsWith(github.ref, 'refs/tags/') }}
         run: |
           RELEASE_TAG="prerelease-${SOURCE_SHA}"
+          if [ "$IS_TAG" = "true" ]; then
+            RELEASE_TAG="${GITHUB_REF#refs/tags/}"
+          fi
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release delete "$RELEASE_TAG" --yes --cleanup-tag
           fi
 
-          gh release create "$RELEASE_TAG" dist/* \
-            --prerelease \
-            --title "Desktop prerelease ${SOURCE_SHA::12}" \
-            --notes "Automated desktop prerelease for ProjectA source commit ${SOURCE_SHA}.
+          if [ "$IS_TAG" = "true" ]; then
+            gh release create "$RELEASE_TAG" dist/* \
+              --title "Desktop ${RELEASE_TAG}" \
+              --notes "Desktop release ${RELEASE_TAG}.
 
           **Platforms:** Windows (.exe), Linux (.AppImage), macOS (.dmg)
 
           Client shell commit: ${GITHUB_SHA}."
+          else
+            gh release create "$RELEASE_TAG" dist/* \
+              --prerelease \
+              --title "Desktop prerelease ${SOURCE_SHA::12}" \
+              --notes "Automated desktop prerelease for ProjectA source commit ${SOURCE_SHA}.
+
+          **Platforms:** Windows (.exe), Linux (.AppImage), macOS (.dmg)
+
+          Client shell commit: ${GITHUB_SHA}."
+          fi
